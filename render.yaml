@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: openrouter-crowdbench
+    runtime: python
+    plan: 0.5c-512mb
+    buildCommand: python3 -m py_compile audition.py
+    startCommand: python3 audition.py --host 0.0.0.0 --port $PORT
+    healthCheckPath: /healthz
+    autoDeployTrigger: commit
+    maxShutdownDelaySeconds: 30
+    envVars:
+      - key: CROWDBENCH_DATA_DIR
+        value: /var/data
+    disk:
+      name: crowdbench-data
+      mountPath: /var/data
+      sizeGB: 1
