@@ -30,10 +30,28 @@ ROOT = Path(__file__).resolve().parent
 DATA_DIR = Path(os.getenv("CROWDBENCH_DATA_DIR", str(ROOT))).expanduser().resolve()
 RESULTS_DIR = DATA_DIR / "results"
 USAGE_LEDGER = DATA_DIR / "usage-ledger.jsonl"
+SEED_RESULTS_DIR = ROOT / "seed-results"
+SEED_VERSION = "20260907"
 OPENROUTER_BASE = "https://openrouter.ai/api/v1"
 DEFAULT_RPM = 12
 MAX_SELECTED_MODELS = 500
 TEST_TYPES = ("smoke", "reliability")
+
+
+def bootstrap_seed_results() -> int:
+    """Copy the public starter history into a new data volume exactly once."""
+    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+    marker = DATA_DIR / f".seeded-{SEED_VERSION}"
+    if marker.exists() or not SEED_RESULTS_DIR.exists():
+        return 0
+    copied = 0
+    for source in sorted(SEED_RESULTS_DIR.glob("*.json")):
+        destination = RESULTS_DIR / source.name
+        if not destination.exists():
+            destination.write_bytes(source.read_bytes())
+            copied += 1
+    marker.write_text(utc_now(), encoding="utf-8")
+    return copied
 
 
 def utc_now() -> str:
@@ -965,9 +983,12 @@ def main() -> None:
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8012)
     args = parser.parse_args()
+    seeded = bootstrap_seed_results()
     server = ThreadingHTTPServer((args.host, args.port), Handler)
     print(f"OpenRouter CrowdBench: http://{args.host}:{args.port}")
     print(f"Inference safety ceiling: {DEFAULT_RPM} requests/minute")
+    if seeded:
+        print(f"Seeded {seeded} historical CrowdBench reports into {RESULTS_DIR}")
     try:
         server.serve_forever()
     except KeyboardInterrupt:

@@ -1,0 +1,104 @@
+{
+  "id": "40c0580b-8a4e-43d5-bf26-de25ff25e696",
+  "role": "smoke",
+  "probes_per_model": 1,
+  "requests_per_minute": 12,
+  "model_ids": [
+    "nvidia/nemotron-3.5-content-safety:free",
+    "openrouter/free"
+  ],
+  "test_mode": "smoke",
+  "assignments": {
+    "teacher": [],
+    "student": [],
+    "optimizer": [],
+    "judge": []
+  },
+  "selected_roles": [],
+  "target_working": 0,
+  "max_requests": 88,
+  "max_models": 2,
+  "working_counts": {
+    "smoke": 1
+  },
+  "exhausted_roles": [],
+  "usage_tracked": true,
+  "stop_requested": false,
+  "status": "completed",
+  "created_at": "2026-09-07T16:21:41.433455+00:00",
+  "completed_at": "2026-09-07T16:21:55.137938+00:00",
+  "current_model": null,
+  "completed_models": 2,
+  "total_requests": 2,
+  "message": "Audition complete",
+  "results": [
+    {
+      "model_id": "openrouter/free",
+      "model_name": "Free Models Router",
+      "role": "smoke",
+      "status": "recommended",
+      "probes": [
+        {
+          "attempt": 1,
+          "ok": true,
+          "status": 200,
+          "latency_ms": 8703,
+          "provider": "Nvidia",
+          "generation_id": "gen-1788798106-8bhOy0qVZ0L2ldJSLe4M",
+          "finish_reason": "stop",
+          "valid_format": true,
+          "role_quality": 1.0,
+          "retry_after": null,
+          "error": null,
+          "output_preview": "READY 48 4"
+        }
+      ],
+      "success_rate": 1.0,
+      "format_rate": 1.0,
+      "median_latency_ms": 8703,
+      "p95_latency_ms": 8703,
+      "role_quality": 1.0,
+      "reliability_score": 97.1,
+      "overall_score": 97.1,
+      "recommendation": "Recommended smoke now",
+      "verdict_explanation": "All 1 probes returned usable output in the required smoke format and the overall score met the strict 80-point gate.",
+      "next_step": "Suitable for a PromptTrain trial; continue monitoring because free-route availability can change.",
+      "potentially_usable": true
+    },
+    {
+      "model_id": "nvidia/nemotron-3.5-content-safety:free",
+      "model_name": "NVIDIA: Nemotron 3.5 Content Safety (free)",
+      "role": "smoke",
+      "status": "unavailable",
+      "probes": [
+        {
+          "attempt": 1,
+          "ok": false,
+          "status": 200,
+          "latency_ms": 1419,
+          "provider": "Nvidia",
+          "generation_id": "gen-1788798101-vOUMnoQVamjMxfUnCNBI",
+          "finish_reason": "length",
+          "valid_format": false,
+          "role_quality": 0.0,
+          "retry_after": null,
+          "error": "Empty or incomplete visible output",
+          "output_preview": null
+        }
+      ],
+      "success_rate": 0.0,
+      "format_rate": 0.0,
+      "median_latency_ms": null,
+      "p95_latency_ms": null,
+      "role_quality": 0.0,
+      "reliability_score": 0.0,
+      "overall_score": 10.0,
+      "recommendation": "Unavailable during this test",
+      "verdict_explanation": "None of the 1 probes produced a usable response during this audition.",
+      "next_step": "Retry later or choose another route; there is not enough evidence to use it unattended.",
+      "potentially_usable": false
+    }
+  ],
+  "report_file": "20260907-112155-smoke-40c0580b.json",
+  "progress": 100
+}

@@ -79,24 +79,6 @@ comparable.
 For a public deployment, contributors should use a limited, revocable OpenRouter key.
 OAuth with PKCE and short-lived keys is the recommended future authentication path.
 
-## Deploy on Render
-
-This repository includes a Render Blueprint in [`render.yaml`](render.yaml). It uses
-a paid `0.5c-512mb` web service with a 1 GB persistent disk because Render's free web
-service filesystem is ephemeral. The disk preserves the shared JSON report archive
-and usage ledger under `/var/data` across restarts and deploys.
-
-1. Fork or connect this repository to Render.
-2. In Render, choose **New → Blueprint** and select the repository.
-3. Review the proposed `openrouter-crowdbench` service and apply the Blueprint.
-4. After deployment, open `/healthz` and confirm it returns `{"status":"ok", ...}`.
-5. Use the generated HTTPS `onrender.com` URL. Do not configure an OpenRouter API key
-   as a Render secret; each contributor supplies a request-scoped key in the browser.
-
-For a high-traffic deployment, move report storage from a single persistent disk to
-PostgreSQL or an event store. A disk-backed service cannot horizontally scale on
-Render, and the current process intentionally permits only one active test at a time.
-
 ## Persistence
 
 By default, reports are written to `results/` and request counts to
@@ -107,7 +89,9 @@ CROWDBENCH_DATA_DIR=/var/data python3 audition.py --host 0.0.0.0 --port 8012
 ```
 
 These runtime files are excluded from git. Saved reports contain sanitized model and
-probe measurements, not contributor credentials.
+probe measurements, not contributor credentials. The repository's sanitized starter
+history is copied from `seed-results/` only when a new data volume is initialized.
+Subsequent contributor reports are written directly to the configured data directory.
 
 ## Test it
 

@@ -126,3 +126,19 @@ def test_model_history_reads_legacy_and_current_results(monkeypatch, tmp_path):
     assert len(entries) == 1
     assert entries[0]["rate_limits"] == 1
     assert "role" not in entries[0]
+
+
+def test_seed_history_is_copied_once_without_overwriting(monkeypatch, tmp_path):
+    seed_dir = tmp_path / "seed"
+    data_dir = tmp_path / "data"
+    results_dir = data_dir / "results"
+    seed_dir.mkdir()
+    (seed_dir / "sample.json").write_text('{"source":"seed"}', encoding="utf-8")
+    monkeypatch.setattr(crowdbench, "SEED_RESULTS_DIR", seed_dir)
+    monkeypatch.setattr(crowdbench, "DATA_DIR", data_dir)
+    monkeypatch.setattr(crowdbench, "RESULTS_DIR", results_dir)
+
+    assert crowdbench.bootstrap_seed_results() == 1
+    (results_dir / "sample.json").write_text('{"source":"community"}', encoding="utf-8")
+    assert crowdbench.bootstrap_seed_results() == 0
+    assert json.loads((results_dir / "sample.json").read_text())["source"] == "community"
