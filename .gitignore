@@ -7,3 +7,5 @@ __pycache__/
 results/
 usage-ledger.jsonl
 .seeded-*
+docs/video/audio/
+docs/video/scenes/

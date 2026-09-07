@@ -12,6 +12,12 @@ compliance, empty-output rates, and HTTP 429 rates change over time.
 
 OpenRouter CrowdBench is not affiliated with or endorsed by OpenRouter.
 
+## Two-minute overview
+
+[![Watch the two-minute OpenRouter CrowdBench overview](docs/video/frames/01-hero.jpg)](docs/video/OpenRouter-CrowdBench-overview.mp4)
+
+**[Watch or download the 2-minute MP4](docs/video/OpenRouter-CrowdBench-overview.mp4)** — a guided tour of the problem, secure contribution flow, smoke and reliability testing, live pricing, community trends, sorting, and model evidence. Narration uses an AI-generated voice.
+
 ## What it looks like
 
 ### Connect without storing your key
