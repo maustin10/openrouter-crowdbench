@@ -26,6 +26,10 @@ OpenRouter CrowdBench is not affiliated with or endorsed by OpenRouter.
 
 ![CrowdBench historical trends and reliability charts](docs/images/history-trends.png)
 
+The sortable history table pairs live OpenRouter pricing with crowd-observed reliability, latency, rate-limit, and anonymous unique-tester counts.
+
+![CrowdBench full historical model results table](docs/images/historical-results-table.png)
+
 ## Run it locally
 
 Requirements: Python 3.11 or newer and an OpenRouter API key. The runtime uses only

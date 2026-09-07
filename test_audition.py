@@ -33,6 +33,22 @@ def test_request_payload_is_fixed_and_role_neutral():
     assert "response_format" not in payload
 
 
+def test_current_prices_use_fresh_public_catalog_without_a_contributor_key(monkeypatch):
+    observed = []
+    monkeypatch.setattr(
+        crowdbench,
+        "api_request",
+        lambda path, key, **_kwargs: (
+            observed.append((path, key))
+            or (200, {"data": [{"id": "vendor/model", "name": "Model", "architecture": {"output_modalities": ["text"]}, "pricing": {"prompt": "0.000001", "completion": "0.000002"}}]}, {})
+        ),
+    )
+    fetched_at, models = crowdbench.get_current_prices()
+    assert fetched_at
+    assert observed == [("/models", None)]
+    assert models[0]["pricing"] == {"prompt": "0.000001", "completion": "0.000002"}
+
+
 def test_rate_limited_result_is_not_recommended():
     result = crowdbench.ModelResult(model_id="x:free", model_name="x", role="smoke")
     result.probes = [
@@ -125,7 +141,15 @@ def test_model_history_reads_legacy_and_current_results(monkeypatch, tmp_path):
     entries = crowdbench.model_history_entries()
     assert len(entries) == 1
     assert entries[0]["rate_limits"] == 1
+    assert entries[0]["contributor_id"] == "legacy-pre-counter"
     assert "role" not in entries[0]
+
+
+def test_model_history_exposes_only_anonymous_contributor_id(monkeypatch, tmp_path):
+    monkeypatch.setattr(crowdbench, "RESULTS_DIR", tmp_path)
+    report = {"id": "run", "completed_at": "2026-09-07T10:00:00+00:00", "test_mode": "smoke", "contributor_id": "abc123hashed", "results": [{"model_id": "vendor/model", "probes": []}]}
+    (tmp_path / "report.json").write_text(json.dumps(report), encoding="utf-8")
+    assert crowdbench.model_history_entries()[0]["contributor_id"] == "abc123hashed"
 
 
 def test_seed_history_is_copied_once_without_overwriting(monkeypatch, tmp_path):

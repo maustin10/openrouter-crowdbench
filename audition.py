@@ -8,6 +8,7 @@ thread, and never serialized into reports, logs, cookies, or browser storage.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -191,6 +192,7 @@ class Job:
     probes_per_model: int
     requests_per_minute: int
     model_ids: list[str]
+    contributor_id: str = "legacy-pre-counter"
     test_mode: str = "legacy"
     assignments: dict[str, list[str]] = field(default_factory=dict)
     selected_roles: list[str] = field(default_factory=list)
@@ -221,23 +223,25 @@ ZDR_CACHE: tuple[float, set[str] | None] | None = None
 
 def api_request(
     path: str,
-    api_key: str,
+    api_key: str | None,
     *,
     method: str = "GET",
     payload: dict[str, Any] | None = None,
     timeout: int = 90,
 ) -> tuple[int, dict[str, Any], dict[str, str]]:
     body = json.dumps(payload).encode("utf-8") if payload is not None else None
+    headers = {
+        "Content-Type": "application/json",
+        "HTTP-Referer": "http://localhost/openrouter-crowdbench",
+        "X-Title": "OpenRouter CrowdBench",
+    }
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
     request = Request(
         f"{OPENROUTER_BASE}{path}",
         data=body,
         method=method,
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-            "HTTP-Referer": "http://localhost/openrouter-crowdbench",
-            "X-Title": "OpenRouter CrowdBench",
-        },
+        headers=headers,
     )
     try:
         with urlopen(request, timeout=timeout) as response:
@@ -391,6 +395,16 @@ def get_catalog_models(api_key: str, include_paid: bool = False, force: bool = F
     CATALOG_CACHE = (time.time(), models)
     selected = models if include_paid else [m for m in models if m["is_free"]]
     return attach_privacy_status(apply_history_priority(selected), get_zdr_model_ids(api_key, force=force))
+
+
+def get_current_prices() -> tuple[str, list[dict[str, Any]]]:
+    """Fetch the public catalog so every page load receives current token prices."""
+    status, payload, _ = api_request("/models", None, timeout=30)
+    if status != 200:
+        message = (payload.get("error") or {}).get("message", "Price catalog request failed")
+        raise RuntimeError(f"OpenRouter price catalog returned {status}: {message}")
+    models = [normalize_model(model) for model in payload.get("data", []) if is_text_model(model)]
+    return utc_now(), models
 
 
 SMOKE_PROMPT = "This is a connectivity and basic instruction-following check. Reply with exactly: READY 48 4"
@@ -702,6 +716,7 @@ def model_history_entries() -> list[dict[str, Any]]:
                     "report_file": path.name,
                     "run_id": data.get("id"),
                     "test_mode": data.get("test_mode", "legacy"),
+                    "contributor_id": data.get("contributor_id") or "legacy-pre-counter",
                     "model_id": model_id,
                     "model_name": result.get("model_name") or model_id,
                     "family": model_family(model_id, result.get("model_name") or model_id),
@@ -839,6 +854,13 @@ class Handler(BaseHTTPRequestHandler):
                 "is_free_tier": bool(key_data.get("is_free_tier", True)),
             })
             return
+        if parsed.path == "/api/prices":
+            try:
+                fetched_at, models = get_current_prices()
+                self.send_json({"fetched_at": fetched_at, "models": models})
+            except RuntimeError as exc:
+                self.send_json({"error": str(exc)}, 502)
+            return
         if parsed.path == "/api/models":
             api_key = self.contributor_key()
             if not api_key:
@@ -846,7 +868,7 @@ class Handler(BaseHTTPRequestHandler):
                 return
             try:
                 include_paid = parse_qs(parsed.query).get("scope", ["free"])[0] == "all"
-                self.send_json({"models": get_catalog_models(api_key, include_paid=include_paid)})
+                self.send_json({"models": get_catalog_models(api_key, include_paid=include_paid, force=True)})
             except RuntimeError as exc:
                 self.send_json({"error": str(exc)}, 502)
             return
@@ -928,6 +950,7 @@ class Handler(BaseHTTPRequestHandler):
             max_models = int(payload.get("max_models", MAX_SELECTED_MODELS))
             catalog_scope = str(payload.get("catalog_scope", "free"))
             allow_paid = payload.get("allow_paid", False) is True
+            tester_id = str(payload.get("tester_id") or "").strip().lower()
             if test_mode == "smoke":
                 probes = 1
             elif not 1 <= probes <= 50:
@@ -945,7 +968,10 @@ class Handler(BaseHTTPRequestHandler):
                 raise ValueError("Select between 1 and 5,000 model candidates")
             if catalog_scope not in {"free", "all"}:
                 raise ValueError("Catalog scope must be free or all")
-            catalog = get_catalog_models(api_key, include_paid=catalog_scope == "all")
+            if not re.fullmatch(r"[a-f0-9-]{20,64}", tester_id):
+                raise ValueError("Anonymous tester identifier is missing or invalid")
+            contributor_id = hashlib.sha256(f"crowdbench:{tester_id}".encode()).hexdigest()[:20]
+            catalog = get_catalog_models(api_key, include_paid=catalog_scope == "all", force=True)
             models = {item["id"]: item for item in catalog}
             invalid = [item for item in selected if item not in models]
             if invalid:
@@ -965,6 +991,7 @@ class Handler(BaseHTTPRequestHandler):
             probes_per_model=probes,
             requests_per_minute=rpm,
             model_ids=selected,
+            contributor_id=contributor_id,
             test_mode=test_mode,
             max_requests=max_requests,
             max_models=max_models,
